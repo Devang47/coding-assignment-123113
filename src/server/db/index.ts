@@ -16,7 +16,7 @@ export const client =
   globalForDb.client ??
   createClient({
     url: env.DATABASE_URL,
-    authToken: env.AUTH_TOKEN as string,
+    authToken: env.AUTH_TOKEN,
   });
 if (env.NODE_ENV !== "production") globalForDb.client = client;
 

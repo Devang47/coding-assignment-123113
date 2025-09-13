@@ -74,39 +74,6 @@ A modern, AI-powered career counseling platform that provides personalized caree
    REPLICATE_API_TOKEN="your-replicate-api-token"
    ```
 
-### Database Setup
-
-1. **Install Turso CLI**
-
-   ```bash
-   # macOS/Linux
-   curl -sSfL https://get.tur.so/install.sh | bash
-
-   # Or via Homebrew on macOS
-   brew install tursodatabase/tap/turso
-   ```
-
-2. **Create and configure your database**
-
-   ```bash
-   # Sign up/login to Turso
-   turso auth signup
-
-   # Create a new database
-   turso db create career-counselor
-
-   # Get your database URL
-   turso db show career-counselor --url
-
-   # Create an auth token
-   turso db tokens create career-counselor
-   ```
-
-3. **Push the database schema**
-   ```bash
-   pnpm db:push
-   ```
-
 ### GitHub OAuth Setup
 
 1. Go to [GitHub Developer Settings](https://github.com/settings/applications/new)
