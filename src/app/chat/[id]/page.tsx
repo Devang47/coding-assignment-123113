@@ -19,7 +19,23 @@ export default function ChatRoom({}) {
   );
   const { data: sessions } = api.chat.listSessions.useQuery();
 
-  const send = api.chat.sendMessage.useMutation({
+  // Send user message first (shows up immediately)
+  const sendUserMessage = api.chat.sendUserMessage.useMutation({
+    onSuccess: async () => {
+      await Promise.all([
+        utils.chat.getSession.invalidate({ id }),
+        utils.chat.listSessions.invalidate(),
+      ]);
+      // After user message is displayed, trigger AI response
+      getAIResponse.mutate({
+        sessionId: id,
+        content: sendUserMessage.variables?.content ?? "",
+      });
+    },
+  });
+
+  // Get AI response separately
+  const getAIResponse = api.chat.sendMessage.useMutation({
     onSuccess: async () => {
       await Promise.all([
         utils.chat.getSession.invalidate({ id }),
@@ -49,9 +65,9 @@ export default function ChatRoom({}) {
     // Basic sanitization - remove potentially harmful characters
     const sanitizedText = text.replace(/[<>]/g, "");
 
-    if (send.isPending) return; // Prevent double submission
+    if (sendUserMessage.isPending || getAIResponse.isPending) return; // Prevent double submission
 
-    send.mutate({ sessionId: id, content: sanitizedText });
+    sendUserMessage.mutate({ sessionId: id, content: sanitizedText });
     form.reset();
   };
 
@@ -151,7 +167,7 @@ export default function ChatRoom({}) {
                   ),
                 )
               )}
-              {send.isPending && (
+              {getAIResponse.isPending && (
                 <div className="flex gap-4">
                   <div className="flex h-8 w-8 items-center justify-center rounded-lg border border-gray-600 bg-gray-700 text-sm font-medium text-gray-300">
                     AI
@@ -178,14 +194,16 @@ export default function ChatRoom({}) {
                 autoComplete="off"
                 maxLength={4000}
                 required
-                disabled={send.isPending}
+                disabled={sendUserMessage.isPending || getAIResponse.isPending}
               />
               <button
                 type="submit"
-                disabled={send.isPending}
+                disabled={sendUserMessage.isPending || getAIResponse.isPending}
                 className="rounded-md border border-blue-500 bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
               >
-                {send.isPending ? "Sending..." : "Send"}
+                {sendUserMessage.isPending || getAIResponse.isPending
+                  ? "Sending..."
+                  : "Send"}
               </button>
             </div>
           </form>

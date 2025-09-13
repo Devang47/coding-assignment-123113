@@ -103,7 +103,7 @@ export const chatRouter = createTRPCRouter({
       return rows;
     }),
 
-  sendMessage: protectedProcedure
+  sendUserMessage: protectedProcedure
     .input(
       z.object({
         sessionId: z.string().min(1),
@@ -132,6 +132,7 @@ export const chatRouter = createTRPCRouter({
       });
       if (!session) throw new Error("Session not found or access denied");
 
+      // Insert user message and return it immediately
       const [userMsg] = await ctx.db
         .insert(chatMessages)
         .values({
@@ -141,6 +142,33 @@ export const chatRouter = createTRPCRouter({
         })
         .returning();
 
+      // Update session timestamp
+      await ctx.db
+        .update(chatSessions)
+        .set({
+          lastMessageAt: sql`(unixepoch())`,
+          updatedAt: sql`(unixepoch())`,
+        })
+        .where(eq(chatSessions.id, input.sessionId));
+
+      return userMsg;
+    }),
+
+  sendMessage: protectedProcedure
+    .input(
+      z.object({
+        sessionId: z.string().min(1),
+        content: z.string().min(1).max(4000).trim(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const session = await ctx.db.query.chatSessions.findFirst({
+        where: (t, { and, eq }) =>
+          and(eq(t.id, input.sessionId), eq(t.userId, ctx.session.user.id)),
+      });
+      if (!session) throw new Error("Session not found or access denied");
+
+      // Get chat history to generate AI response
       const history = await ctx.db.query.chatMessages.findMany({
         where: (t, { eq }) => eq(t.sessionId, input.sessionId),
         orderBy: (t, { asc }) => [asc(t.id)],
@@ -148,6 +176,7 @@ export const chatRouter = createTRPCRouter({
 
       const assistantText = await aiReply(input.sessionId, history);
 
+      // Insert AI response only
       const [assistantMsg] = await ctx.db
         .insert(chatMessages)
         .values({
@@ -165,6 +194,6 @@ export const chatRouter = createTRPCRouter({
         })
         .where(eq(chatSessions.id, input.sessionId));
 
-      return { user: userMsg, assistant: assistantMsg };
+      return assistantMsg;
     }),
 });
