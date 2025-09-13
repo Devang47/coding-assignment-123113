@@ -43,7 +43,7 @@ export default async function Home() {
                 </>
               ) : (
                 <Link
-                  href="/auth/signin"
+                  href="/api/auth/signin"
                   className="rounded-md border border-blue-500 bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
                 >
                   Sign in
@@ -76,7 +76,7 @@ export default async function Home() {
             ) : (
               <div className="mt-10">
                 <Link
-                  href="/auth/signin"
+                  href="/api/auth/signin"
                   className="rounded-md border border-blue-500 bg-blue-600 px-6 py-3 text-base font-medium text-white hover:bg-blue-700"
                 >
                   Get Started
