@@ -45,6 +45,8 @@ export const users = createTable("user", (d) => ({
 
 export const usersRelations = relations(users, ({ many }) => ({
   accounts: many(accounts),
+  // New relations
+  chatSessions: many(chatSessions),
 }));
 
 export const accounts = createTable(
@@ -60,6 +62,7 @@ export const accounts = createTable(
     refresh_token: d.text(),
     access_token: d.text(),
     expires_at: d.integer(),
+    refresh_token_expires_in: d.integer(),
     token_type: d.text({ length: 255 }),
     scope: d.text({ length: 255 }),
     id_token: d.text(),
@@ -103,3 +106,67 @@ export const verificationTokens = createTable(
   }),
   (t) => [primaryKey({ columns: [t.identifier, t.token] })],
 );
+
+// =====================
+// Chat-related tables
+// =====================
+export const chatSessions = createTable(
+  "chat_session",
+  (d) => ({
+    id: d
+      .text({ length: 255 })
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    userId: d
+      .text({ length: 255 })
+      .notNull()
+      .references(() => users.id),
+    title: d.text({ length: 255 }).notNull().default("New Career Chat"),
+    createdAt: d
+      .integer({ mode: "timestamp" })
+      .notNull()
+      .default(sql`(unixepoch())`),
+    updatedAt: d.integer({ mode: "timestamp" }).$onUpdate(() => new Date()),
+    lastMessageAt: d.integer({ mode: "timestamp" }),
+  }),
+  (t) => [
+    index("chat_session_user_idx").on(t.userId),
+    index("chat_session_last_msg_idx").on(t.lastMessageAt),
+  ],
+);
+
+export const chatMessages = createTable(
+  "chat_message",
+  (d) => ({
+    id: d.integer({ mode: "number" }).primaryKey({ autoIncrement: true }),
+    sessionId: d
+      .text({ length: 255 })
+      .notNull()
+      .references(() => chatSessions.id, { onDelete: "cascade" }),
+    role: d.text({ length: 32 }).notNull(), // 'user' | 'assistant' | 'system'
+    content: d.text().notNull(),
+    createdAt: d
+      .integer({ mode: "timestamp" })
+      .notNull()
+      .default(sql`(unixepoch())`),
+  }),
+  (t) => [
+    index("chat_message_session_idx").on(t.sessionId),
+    index("chat_message_created_idx").on(t.createdAt),
+  ],
+);
+
+export const chatSessionsRelations = relations(
+  chatSessions,
+  ({ one, many }) => ({
+    user: one(users, { fields: [chatSessions.userId], references: [users.id] }),
+    messages: many(chatMessages),
+  }),
+);
+
+export const chatMessagesRelations = relations(chatMessages, ({ one }) => ({
+  session: one(chatSessions, {
+    fields: [chatMessages.sessionId],
+    references: [chatSessions.id],
+  }),
+}));

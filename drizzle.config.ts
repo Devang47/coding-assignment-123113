@@ -4,9 +4,10 @@ import { env } from "~/env";
 
 export default {
   schema: "./src/server/db/schema.ts",
-  dialect: "sqlite",
+  dialect: "turso",
   dbCredentials: {
     url: env.DATABASE_URL,
+    authToken: process.env.AUTH_TOKEN!,
   },
   tablesFilter: ["oration-test_*"],
 } satisfies Config;
